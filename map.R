@@ -1,4 +1,7 @@
-#############################################################
+#POXC metaanalysis based on 2.2024 POXC file
+#Authors: Cécile Chéron-Bessou, Damien Beillouin, Alexis Thoumazeau, Lydie Chapuis-Lardy, Tiphaine Chevallier, Julien Demenois, Paul N Nelson
+
+#########################################################################################
 ## map world
 ################################################################
 
@@ -21,58 +24,90 @@ world_map <- map_data("world")
 library(ggplot2)
 
 # compte le nombre de expé pour chaque combin de latiture et longitude (plusieurs données peuvent provenir de la même zone)
-NB_Points<-data_Code %>% group_by(LAT_algebr,LON_algebr,NEW_treatment_type) %>% tally()
+NB_Points<-POXC_map %>% group_by(Lat_y,Long_x) %>% tally()
 
 # Compte le nombre de données par pays (pour colorer le fond de carte)
-NB_Country<-data_Code %>% group_by(country) %>% tally()
+NB_Country<-POXC_map %>% group_by(Country) %>% tally()
 names(NB_Country)[1]<- 'region'
 # on associe les 2.
 world_map2<- left_join(world_map,NB_Country)
 
 # on peux si on veux choisir un autre niveau d'info; par exemple ici les types d'intervention
 # nom de la variable a changer, j'ai réutilisé un vieux scripts
-NB_SYST<-data_Code %>% group_by(NEW_treatment_type) %>% tally() %>%
-  arrange()
+#NB_SYST<-data_Code %>% group_by(NEW_treatment_type) %>% tally() %>%
+ # arrange()
 
 # on chooisi nos couleurs
-couleurs_par_niveau <- c(
-  "Agroforestry fallow" = "#7fc97f",
-  "Alley cropping" = "#beaed4",
-  "Hedgerow" = "#fdc086",
-  "Multistrata system" = "#ffff99",
-  "Shaded perennial" = "#386cb0",
-  "Silvopasture" = "#f0027f"
-)
+#couleurs_par_niveau <- c(
+#  "Agroforestry fallow" = "#7fc97f",
+#  "Alley cropping" = "#beaed4",
+#  "Hedgerow" = "#fdc086",
+#  "Multistrata system" = "#ffff99",
+#  "Shaded perennial" = "#386cb0",
+#  "Silvopasture" = "#f0027f"
+#)
 
 # et on l'histogramme du nombre de données
-ggplot(NB_SYST, aes(x = reorder(NEW_treatment_type, n), y = n, fill = NEW_treatment_type)) +
-  geom_bar(stat = "identity", color = "black") +
-  labs(title = "", x = "", y = "Count") +
-  scale_fill_manual(values = couleurs_par_niveau) +  # Utiliser les couleurs spécifiques pour chaque niveau
-  theme_pubr() +
-  theme(axis.text.y = element_text(angle = 0, hjust = 1, color = 'black')) +
-  coord_flip()
+#ggplot(NB_SYST, aes(x = reorder(NEW_treatment_type, n), y = n, fill = NEW_treatment_type)) +
+#  geom_bar(stat = "identity", color = "black") +
+#  labs(title = "", x = "", y = "Count") +
+#  scale_fill_manual(values = couleurs_par_niveau) +  # Utiliser les couleurs spécifiques pour chaque niveau
+#  theme_pubr() +
+#  theme(axis.text.y = element_text(angle = 0, hjust = 1, color = 'black')) +
+#  coord_flip()
 
 
 ## on va faire la carte
-NB_Points<-left_join(NB_Points, TAB)
+#NB_Points<-left_join(NB_Points, TAB)
 
 library(ggnewscale)
+
+# Create a discrete variable
+world_map2$cut_n<- cut (world_map2$n, breaks= c(0, 5, 20, 60, 80, 110))
+brks_scale <- levels(world_map2$cut_n)
+
+# plot the map
+#ggplot(world_map2) +
+#  geom_sf(aes(fill = cut_n),size=0.2, color="gray20") +
+  #scale_fill_gradientn(colours = c('#461863','#404E88','#2A8A8C','#7FD157','#F9E53F') )+
+#  guides(fill = guide_legend(reverse = T)) +
+#  labs(fill = 'number of experiments'                    # on ajuste les titres, légendes, ....
+#      ,color = '.'
+#       ,title = ''
+#       ,x = NULL
+#       ,y = NULL) +
+#  theme_bw()+theme(panel.grid.major = element_line(colour = 'grey50', size = 0.3, linetype = 3))+
+#  theme(legend.position="bottom")+
+#  scale_fill_manual(values=c('#f6e8c3',"#dfc283",'#a1d99b','#31a354','#2A8A8C','#404E88','#461863'), na.value= "white")
+
+
 ggplot() +
   geom_map(data = world_map2, map = world_map,
            aes(x = long, y = lat, map_id = region,
-               fill = n), color = "#4d4d4d", size = 0.5) +  # Changer les couleurs et la taille des lignes
-  scale_fill_gradientn(colours=brewer.pal(5,"OrRd"))+
-  coord_cartesian(xlim = longitude_lim, ylim = latitude_lim) +
+               fill = cut_n), color = "#4d4d4d", linewidth = 0.2)+ # Changer les couleurs et la taille des lignes
+  labs(fill = 'Number of experiments'                    # on ajuste les titres, légendes, ....
+       ,color = '.'
+       ,title = ''
+       ,x = NULL
+       ,y = NULL) +
   labs(title = "",
-       x = "", y = "") +  # Ajouter des étiquettes aux axes
-  theme_minimal() +  new_scale_fill() +
-  geom_point(data = NB_Points,
-             aes(x = LON_algebr, y = LAT_algebr, size= n,
-                 fill = NEW_treatment_type),shape=21) +
-  scale_fill_manual(values = couleurs_par_niveau) + # Utiliser les couleurs spécifiques pour chaque niveau
-  theme(legend.position = "none",  # Supprimer la légende pour les points
-        panel.grid = element_blank())  # Supprimer le quadrillage
+       x = "Longitude", y = "Latitude")+
+  theme_bw()+
+  theme(panel.grid.major = element_line(colour = 'grey50', size = 0.3, linetype = 3))+
+  theme(legend.position="right")+
+  scale_fill_manual(values=c('#FFD700','#B5CF68','#90CC9C','#6BC8D0','#446DA8'), na.value= "white")
+
+  #scale_fill_gradientn(colours=brewer.pal(5,"OrRd"))+
+  #coord_cartesian(xlim = longitude_lim, ylim = latitude_lim) +
+  #labs(title = "",
+  #     x = "", y = "") +  # Ajouter des étiquettes aux axes
+  #theme_minimal() +  new_scale_fill() +
+  #geom_point(data = NB_Points,
+  #           aes(x = LON_algebr, y = LAT_algebr, size= n,
+   #              fill = NEW_treatment_type),shape=21) +
+  #scale_fill_manual(values = couleurs_par_niveau) + # Utiliser les couleurs spécifiques pour chaque niveau
+  #theme(legend.position = "none",  # Supprimer la légende pour les points
+   #     panel.grid = element_blank())  # Supprimer le quadrillage
 
 
 ### Whitetaker plot
