@@ -2,83 +2,44 @@
 #Authors: Cécile Chéron-Bessou, Damien Beillouin, Alexis Thoumazeau, Lydie Chapuis-Lardy, Tiphaine Chevallier, Julien Demenois, Paul N Nelson
 
 #########################################################################################
-## map world
-################################################################
+#1. World map + Whittaker biomes with POXC data points----
 
 
-# Charger les bibliothèques nécessaires si elles ne sont pas déjà installées
+## 1.0 Needed librairies----
+
+# Needed packages to upload and launch
 # install.packages("ggplot2")
 # install.packages("maps")
 # install.packages("mapdata")
 
-# Charger les bibliothèques
 library(ggplot2)
 library(maps)
 library(mapdata)
+library(ggnewscale)
+library(raster)
+library(sp)
 
-# Récupérer les données des pays du monde
+##1.1 Creation of the world map with the number of experiments per country translated into colour classes----
+
+
+# World map with country names and coordinates
 world_map <- map_data("world")
 
+# Adding the number of experiments per country based on their coordinates
 
-# Créer la carte d
-library(ggplot2)
-
-# compte le nombre de expé pour chaque combin de latiture et longitude (plusieurs données peuvent provenir de la même zone)
+# Counting the number of experiments per combinatino of x-y coordinates (more than one experiment is possible per combination)
 NB_Points<-POXC_map %>% group_by(Lat_y,Long_x) %>% tally()
 
-# Compte le nombre de données par pays (pour colorer le fond de carte)
+# Counting the number of experiments per country
 NB_Country<-POXC_map %>% group_by(Country) %>% tally()
 names(NB_Country)[1]<- 'region'
 # on associe les 2.
 world_map2<- left_join(world_map,NB_Country)
 
-# on peux si on veux choisir un autre niveau d'info; par exemple ici les types d'intervention
-# nom de la variable a changer, j'ai réutilisé un vieux scripts
-#NB_SYST<-data_Code %>% group_by(NEW_treatment_type) %>% tally() %>%
- # arrange()
-
-# on chooisi nos couleurs
-#couleurs_par_niveau <- c(
-#  "Agroforestry fallow" = "#7fc97f",
-#  "Alley cropping" = "#beaed4",
-#  "Hedgerow" = "#fdc086",
-#  "Multistrata system" = "#ffff99",
-#  "Shaded perennial" = "#386cb0",
-#  "Silvopasture" = "#f0027f"
-#)
-
-# et on l'histogramme du nombre de données
-#ggplot(NB_SYST, aes(x = reorder(NEW_treatment_type, n), y = n, fill = NEW_treatment_type)) +
-#  geom_bar(stat = "identity", color = "black") +
-#  labs(title = "", x = "", y = "Count") +
-#  scale_fill_manual(values = couleurs_par_niveau) +  # Utiliser les couleurs spécifiques pour chaque niveau
-#  theme_pubr() +
-#  theme(axis.text.y = element_text(angle = 0, hjust = 1, color = 'black')) +
-#  coord_flip()
-
-
-## on va faire la carte
-#NB_Points<-left_join(NB_Points, TAB)
-
-library(ggnewscale)
 
 # Create a discrete variable
 world_map2$cut_n<- cut (world_map2$n, breaks= c(0, 5, 20, 60, 80, 110))
 brks_scale <- levels(world_map2$cut_n)
-
-# plot the map
-#ggplot(world_map2) +
-#  geom_sf(aes(fill = cut_n),size=0.2, color="gray20") +
-  #scale_fill_gradientn(colours = c('#461863','#404E88','#2A8A8C','#7FD157','#F9E53F') )+
-#  guides(fill = guide_legend(reverse = T)) +
-#  labs(fill = 'number of experiments'                    # on ajuste les titres, légendes, ....
-#      ,color = '.'
-#       ,title = ''
-#       ,x = NULL
-#       ,y = NULL) +
-#  theme_bw()+theme(panel.grid.major = element_line(colour = 'grey50', size = 0.3, linetype = 3))+
-#  theme(legend.position="bottom")+
-#  scale_fill_manual(values=c('#f6e8c3',"#dfc283",'#a1d99b','#31a354','#2A8A8C','#404E88','#461863'), na.value= "white")
 
 
 ggplot() +
@@ -97,44 +58,28 @@ ggplot() +
   theme(legend.position="right")+
   scale_fill_manual(values=c('#FFD700','#B5CF68','#90CC9C','#6BC8D0','#446DA8'), na.value= "white")
 
-  #scale_fill_gradientn(colours=brewer.pal(5,"OrRd"))+
-  #coord_cartesian(xlim = longitude_lim, ylim = latitude_lim) +
-  #labs(title = "",
-  #     x = "", y = "") +  # Ajouter des étiquettes aux axes
-  #theme_minimal() +  new_scale_fill() +
-  #geom_point(data = NB_Points,
-  #           aes(x = LON_algebr, y = LAT_algebr, size= n,
-   #              fill = NEW_treatment_type),shape=21) +
-  #scale_fill_manual(values = couleurs_par_niveau) + # Utiliser les couleurs spécifiques pour chaque niveau
-  #theme(legend.position = "none",  # Supprimer la légende pour les points
-   #     panel.grid = element_blank())  # Supprimer le quadrillage
 
-
-### Whitetaker plot
-
-
-### Whitetaker - this part needs updating ####
-
-library(raster)
-library(sp)
+##1.2 Whitetaker plot----
 
 # on charge les données de Worldclim pour avoir precipitation et temp
-P1 <- raster('wc2.1_10m_prec_01.tif')
-T1 <- raster('wc2.1_10m_tavg_01.tif')
+##https://www.worldclim.org/data/worldclim21.html (19) WorldClim Bioclimatic variables for WorldClim version 2.
+##They are the average for the years 1970-2000.BIO1 = Annual Mean Temperature + BIO12 = Annual Precipitation
+P1 <- raster('wc2.1_30s_bio_12.tif')
+T1 <- raster('wc2.1_30s_bio_1.tif')
 
 # on selectionne les coordonnées de nos points GPS
 # nom variable et tableau a adapter...
-TEST<-TEST %>% dplyr::filter(!is.na(longitude),
-                             !is.na(latitude))
-TEST1<-sf::st_as_sf(TEST, coords = c( "longitude", "latitude" ) )
+POXC_W<-POXC_whit %>% dplyr::filter(!is.na(Long_x),
+                             !is.na(Lat_y))
+TEST1<-sf::st_as_sf(POXC_W, coords = c( "Long_x", "Lat_y" ) )
 values <- raster::extract(P1,TEST1)
-DATA_P <- cbind.data.frame(TEST,values)
-names(DATA_P)[4]<-"precipitation"
+DATA_P <- cbind.data.frame(POXC_W,values)
+names(DATA_P)[8]<-"Precipitations"
 
 # même chose avec température
 values <- raster::extract(T1,TEST1)
-DATA_T <- cbind.data.frame(TEST,values)
-names(DATA_T)[4]<-"temperature"
+DATA_T <- cbind.data.frame(POXC_W,values)
+names(DATA_T)[8]<-"Temperature"
 
 # on merge nos fichiers
 DATA<-left_join(DATA_T,DATA_P)
@@ -142,16 +87,21 @@ DATA<-left_join(DATA_T,DATA_P)
 #devtools::install_github("valentinitnelav/plotbiomes")
 #library(plotbiomes)
 
-# on va faire le Whitetaker plot
+# on va faire le Whittaker plot
+install.packages("remotes")
+remotes::install_github("valentinitnelav/plotbiomes")
+library(plotbiomes)
+
 whittaker_base_plot() +
-  # add the temperature - precipitation data points
-  geom_point(data = DATA,
-             aes(x = temperature,
-                 y = precipitation),
+  geom_point(data = DATA,         #add the temperature - precipitation data points
+             aes(x = Temperature,
+                 y = Precipitations/10),
              size   = 3,
-             shape  = 21,
-             colour = "gray95",
-             fill   = "black",
-             stroke = 1,
-             alpha  = 0.5) +
-  theme_bw()
+             shape  = 23,
+             colour = "white",
+             fill   = "gray35",
+             stroke = 1.5,
+             alpha  = 0.8) +
+  theme_bw()+
+  theme(panel.grid.major = element_line(colour = 'grey50', size = 0.3, linetype = 3))
+

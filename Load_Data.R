@@ -1,9 +1,7 @@
 #POXC metaanalysis based on 2.2024 POXC file
 #Authors: Cécile Chéron-Bessou, Damien Beillouin, Alexis Thoumazeau, Lydie Chapuis-Lardy, Tiphaine Chevallier, Julien Demenois, Paul N Nelson
 
-############################
-########### 1. Load DATA
-############################
+####################################### 1. Load DATA
 
 
 #libraries in Utes but some paste here for Damien
@@ -14,6 +12,12 @@ library(tidyr)       #clean data part of tidyverse?
 library(tibble)
 library(lubridate)   #for dates
 library(ggplot2)     #visualise data
+library(maps)
+library(mapdata)
+library(ggnewscale)
+library(raster)
+library(plotbiomes)
+library(sp)
 library(cowplot)
 library(ggpubr)
 library(hrbrthemes)
@@ -32,6 +36,9 @@ library(dmetar)   #for metanalysis by Mathias Harrer
 library(metafor)
 library(metadat)
 library(esc)
+library(broom) # Pour utiliser la fonction tidy
+library(broom.mixed) # pour utiliser broom et metafor
+library(magrittr)  # pour les pipes
 
 #Cecile
 setwd(dir="D:/Mes Donnees/A_MOBILITY/JCU_2022-2024/SAAFE/DATA/POXC/METAANALYSIS")
@@ -39,29 +46,32 @@ setwd(dir="D:/Mes Donnees/A_MOBILITY/JCU_2022-2024/SAAFE/DATA/POXC/METAANALYSIS"
 # Damien
 setwd("~/Documents/POXC")
 
-#1. Data----
+#1. Data mapping and tidying----
 ##1.1 POXC points for the mapping----
 
 POXC_map <-file.choose()
-POXC_map <-read.csv(POXC_map, h=T, stringsAsFactors=FALSE, fileEncoding="latin1")
+POXC_map <-read.csv(POXC_map, h=T, stringsAsFactors=FALSE, fileEncoding="latin1")   #stringsAsFactors = FALSE  #to avoid pb with NA introduced by coercion
 POXC_map <- separate(POXC_map, Location, c("Country", "Loc_details"), "/")
 
+##1.2 POXC points for the whittaker plot----
 
-##1.2 POXC tibble----
+POXC_whit<-POXC_map
+POXC_whit <- POXC_whit[,-c(3:6,8,11,13:14,16:24)]
+
+##1.3 POXC tibble----
 #3957 obs of 42 variables
 #Data
 
 POXC_meta <-file.choose()
 POXC_meta <-read.csv(POXC_meta,h=T, stringsAsFactors = FALSE)
-POXC_meta <- POXC_meta[,-c(2,36:42)]
+POXC_meta <- POXC_meta[-4024,]
 
-POXC_metaC <- POXC_meta %>%
+#POXC_metaC <- POXC_meta %>%
 #filter(!POXC_ID %in% c('626_2','626_3','626_4', '626_12'))
 
 glimpse(POXC_meta)
 summary(POXC_meta,maxsum=50)
 
-stringsAsFactors = FALSE  #to avoid pb with NA introduced by coercion
 POXC_meta  <- POXC_meta  %>%
   mutate(Treat_Rep = as.numeric(Treat_Rep)) %>%
   mutate(Control_Rep = as.numeric(Control_Rep)) %>%
@@ -85,7 +95,7 @@ POXC_meta  <- POXC_meta  %>%
       mutate(Depth = if_else(Depth == "Oct-25", "10-25", Depth)) %>%
   mutate(Depth = as.factor(Depth))
 
-#POXC <- POXC[rowSums(is.na(POXC)) !=ncol(POXC),]
+#POXC2 <- POXC_meta[rowSums(is.na(POXC_meta)) !=ncol(POXC_meta),]  checks if the some of NA in one row equal the number of columns; if not rows are kept
 
 POXC_meta <- POXC_meta %>%
   mutate(POXC_SD_T1 = case_when(is.na(POXC_SD_T)~POXC_SE_T*sqrt(Treat_Rep),
